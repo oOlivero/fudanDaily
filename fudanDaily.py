@@ -6,10 +6,9 @@ import hashlib
 import requests
 from bs4 import BeautifulSoup
 from datetime import datetime, timezone, timedelta
+from os import path as os_path
 
-USERNAME = os.getenv("USERNAME")
-PASSWORD = os.getenv("PASSWORD")
-PUSH_KEY = os.getenv("PUSH_KEY")
+PUSH_KEY = ""
 
 fudan_daily_url = "https://zlapp.fudan.edu.cn/site/ncov/fudanDaily"
 login_url = "https://uis.fudan.edu.cn/authserver/login?service=https%3A%2F%2Fzlapp.fudan.edu.cn%2Fa_fudanzlapp%2Fapi%2Fsso%2Findex%3Fredirect%3Dhttps%253A%252F%252Fzlapp.fudan.edu.cn%252Fsite%252Fncov%252FfudanDaily%26from%3Dwap"
@@ -20,7 +19,8 @@ save_url = "https://zlapp.fudan.edu.cn/ncov/wap/fudan/save"
 
 def get_session(_login_info):
     _session = requests.Session()
-    _session.headers["User-Agent"] = "Mozilla/5.0 (iPhone; CPU iPhone OS 14_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/7.0.18(0x17001229) NetType/WIFI Language/zh_CN miniProgram"
+    _session.headers[
+        "User-Agent"] = "Mozilla/5.0 (iPhone; CPU iPhone OS 14_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/7.0.18(0x17001229) NetType/WIFI Language/zh_CN miniProgram"
 
     _response = _session.get(login_url)
     soup = BeautifulSoup(_response.text, "lxml")
@@ -109,36 +109,69 @@ def notify(_title, _message=None):
         print(f"发送通知失败：{_response.status_code}")
 
 
+def set_user():
+    users_info = []
+    if os_path.exists("users.txt"):
+        with open("users.txt", "r") as f:
+            lines = f.readlines()
+            for line in lines:
+                if len(line) < 5:
+                    continue
+                line = line.strip()
+                user_info = line.split(':')
+                username, password = user_info[0], user_info[1]
+            users_info.append = ((username,password))
+    else:
+        print("users.txt NOT FOUND. Initialising for user info")
+        username = input("username:")
+        password = input("password:")
+        mail_info_str = (username, password)
+        with open("users.txt", "w") as f:
+            f.writelines(':'.join(mail_info_str))
+            y = input("是否继续添加,是请输入y")
+            while y == "y":
+                print("继续添加用户")
+                username = input("username:")
+                password = input("password:")
+                f.writelines(':'.join(mail_info_str))
+                y = input("是否继续添加,是请输入y")
+        users_info.append((username,password))
+    return users_info
+
+
 if __name__ == "__main__":
-    if not USERNAME or not PASSWORD:
-        notify("请正确配置用户名和密码！")
-        sys.exit()
-
-    login_info = {
-        "username": USERNAME,
-        "password": PASSWORD
-    }
-
-    try:
-        session = get_session(login_info)
-        historical_info = get_historical_info(session)
-        save_log(session)
-
-        payload = get_payload(historical_info)
-        payload_str = get_payload_str(payload)
-        # print(payload_str)
-
-        if payload.get("date") == get_today_date():
-            notify(f"今日已打卡：{payload.get('area')}", f"今日已打卡：{payload_str}")
+    users = set_user()
+    for u in users:
+        USERNAME = u[0]
+        PASSWORD = u[1]
+        if not USERNAME or not PASSWORD:
+            notify("请正确配置用户名和密码！")
             sys.exit()
+        login_info = {
+            "username": USERNAME,
+            "password": PASSWORD
+        }
 
-        time.sleep(5)
-        response = save(session, payload)
+        try:
+            session = get_session(login_info)
+            historical_info = get_historical_info(session)
+            save_log(session)
 
-        if response.status_code == 200 and response.text == '{"e":0,"m":"操作成功","d":{}}':
-            notify(f"打卡成功：{payload.get('area')}", payload_str)
-        else:
-            notify("打卡失败，请手动打卡", response.text)
+            payload = get_payload(historical_info)
+            payload_str = get_payload_str(payload)
+            # print(payload_str)
 
-    except Exception as e:
-        notify("打卡失败，请手动打卡", str(e))
+            if payload.get("date") == get_today_date():
+                notify(f"今日已打卡：{payload.get('area')}", f"今日已打卡：{payload_str}")
+                sys.exit()
+
+            time.sleep(5)
+            response = save(session, payload)
+
+            if response.status_code == 200 and response.text == '{"e":0,"m":"操作成功","d":{}}':
+                notify(f"打卡成功：{payload.get('area')}", payload_str)
+            else:
+                notify("打卡失败，请手动打卡", response.text)
+
+        except Exception as e:
+            notify("打卡失败，请手动打卡", str(e))
