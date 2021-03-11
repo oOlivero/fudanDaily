@@ -139,8 +139,8 @@ def set_user():
 
 
 if __name__ == "__main__":
-    users = set_user()
     SENDER, TOKEN = mail.set_mail_sender()
+    users = set_user()
     for u in users:
         USERNAME = u[0]
         PASSWORD = u[1]
