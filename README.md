@@ -16,9 +16,9 @@
 ---
 ### 打卡推送的qq邮箱
 qq邮箱中选择邮箱设置->账户
-![avatar](img/qqMail1.png)
-下翻到如下
-![avatar](img/qqMail2.png)
-开启pop3/SMTP
+![avatar](img/qqMail1.png)</br>
+下翻到如下</br>
+![avatar](img/qqMail2.png)</br>
+开启pop3/SMTP</br>
 再点击下方生成授权码</br>
-授权码即为打卡推送的邮箱和token
+授权码即为打卡推送的邮箱和token</br>
