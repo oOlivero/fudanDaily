@@ -135,7 +135,7 @@ def set_user():
                 mail_info_str = (username, password, usermail)
                 f.writelines("\n"+':'.join(mail_info_str))
                 y = input("是否继续添加,是请输入y")
-        users_info.append((username, password, usermail))
+                users_info.append((username, password, usermail))
     return users_info
 
 
