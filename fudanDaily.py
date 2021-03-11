@@ -1,17 +1,17 @@
-import os
 import sys
 import json
 import time
 import hashlib
 import requests
+import mail
 from bs4 import BeautifulSoup
 from datetime import datetime, timezone, timedelta
 from os import path as os_path
 
-PUSH_KEY = ""
-
 fudan_daily_url = "https://zlapp.fudan.edu.cn/site/ncov/fudanDaily"
-login_url = "https://uis.fudan.edu.cn/authserver/login?service=https%3A%2F%2Fzlapp.fudan.edu.cn%2Fa_fudanzlapp%2Fapi%2Fsso%2Findex%3Fredirect%3Dhttps%253A%252F%252Fzlapp.fudan.edu.cn%252Fsite%252Fncov%252FfudanDaily%26from%3Dwap"
+login_url = "https://uis.fudan.edu.cn/authserver/login?service=https%3A%2F%2Fzlapp.fudan.edu.cn%2Fa_fudanzlapp%2Fapi" \
+            "%2Fsso%2Findex%3Fredirect%3Dhttps%253A%252F%252Fzlapp.fudan.edu.cn%252Fsite%252Fncov%252FfudanDaily" \
+            "%26from%3Dwap "
 get_info_url = "https://zlapp.fudan.edu.cn/ncov/wap/fudan/get-info"
 save_log_url = "https://zlapp.fudan.edu.cn/wap/log/save-log"
 save_url = "https://zlapp.fudan.edu.cn/ncov/wap/fudan/save"
@@ -90,23 +90,21 @@ def save(_session, _payload):
     return _session.post(save_url, data=_payload)
 
 
-def notify(_title, _message=None):
-    if not PUSH_KEY:
-        print("未配置PUSH_KEY！")
+def notify(SENDER, TOKEN, USERMAIL, _title, _message=None):
+    if not TOKEN:
+        print("未配置TOKEN！")
         return
 
     if not _message:
         _message = _title
-
     print(_title)
     print(_message)
-
-    _response = requests.post(f"https://sc.ftqq.com/{PUSH_KEY}.send", {"text": _title, "desp": _message})
-
-    if _response.status_code == 200:
-        print(f"发送通知状态：{_response.content.decode('utf-8')}")
+    flag = mail.mail(SENDER, TOKEN, USERMAIL, _title, _message)
+    if flag:
+        print("邮件发送成功")
     else:
-        print(f"发送通知失败：{_response.status_code}")
+        print("邮件发送失败")
+
 
 
 def set_user():
@@ -119,12 +117,12 @@ def set_user():
                     continue
                 line = line.strip()
                 user_info = line.split(':')
-                username, password = user_info[0], user_info[1]
-            users_info.append = ((username,password))
+                users_info.append(user_info)
     else:
         print("users.txt NOT FOUND. Initialising for user info")
         username = input("username:")
         password = input("password:")
+        usermail = input("mail:")
         mail_info_str = (username, password)
         with open("users.txt", "w") as f:
             f.writelines(':'.join(mail_info_str))
@@ -133,23 +131,27 @@ def set_user():
                 print("继续添加用户")
                 username = input("username:")
                 password = input("password:")
+                usermail = input("mail:")
                 f.writelines(':'.join(mail_info_str))
                 y = input("是否继续添加,是请输入y")
-        users_info.append((username,password))
+        users_info.append((username, password, usermail))
     return users_info
 
 
 if __name__ == "__main__":
     users = set_user()
+    SENDER, TOKEN = mail.set_mail_sender()
     for u in users:
         USERNAME = u[0]
         PASSWORD = u[1]
-        if not USERNAME or not PASSWORD:
-            notify("请正确配置用户名和密码！")
+        USERMAIL = u[2]
+        if not USERNAME or not PASSWORD or not USERMAIL:
+            notify("请正确配置用户名和密码或未输入接收邮箱！")
             sys.exit()
         login_info = {
             "username": USERNAME,
-            "password": PASSWORD
+            "password": PASSWORD,
+            "usermail": USERMAIL
         }
 
         try:
@@ -162,16 +164,16 @@ if __name__ == "__main__":
             # print(payload_str)
 
             if payload.get("date") == get_today_date():
-                notify(f"今日已打卡：{payload.get('area')}", f"今日已打卡：{payload_str}")
+                notify(SENDER, TOKEN, USERMAIL, f"今日已打卡：{payload.get('area')}", f"今日已打卡：{payload_str}")
                 sys.exit()
 
             time.sleep(5)
             response = save(session, payload)
 
             if response.status_code == 200 and response.text == '{"e":0,"m":"操作成功","d":{}}':
-                notify(f"打卡成功：{payload.get('area')}", payload_str)
+                notify(SENDER, TOKEN, USERMAIL, f"打卡成功：{payload.get('area')}", payload_str)
             else:
-                notify("打卡失败，请手动打卡", response.text)
+                notify(SENDER, TOKEN, USERMAIL, "打卡失败，请手动打卡", response.text)
 
         except Exception as e:
-            notify("打卡失败，请手动打卡", str(e))
+            notify(SENDER, TOKEN, USERMAIL, "打卡失败，请手动打卡", str(e))
