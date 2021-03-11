@@ -132,6 +132,7 @@ def set_user():
                 username = input("username:")
                 password = input("password:")
                 usermail = input("mail:")
+                mail_info_str = (username, password, usermail)
                 f.writelines("\n"+':'.join(mail_info_str))
                 y = input("是否继续添加,是请输入y")
         users_info.append((username, password, usermail))
@@ -165,7 +166,7 @@ if __name__ == "__main__":
 
             if payload.get("date") == get_today_date():
                 notify(SENDER, TOKEN, USERMAIL, f"今日已打卡：{payload.get('area')}", f"今日已打卡：{payload_str}")
-                sys.exit()
+                continue
 
             time.sleep(5)
             response = save(session, payload)
