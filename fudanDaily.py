@@ -123,7 +123,7 @@ def set_user():
         username = input("username:")
         password = input("password:")
         usermail = input("mail:")
-        mail_info_str = (username, password)
+        mail_info_str = (username, password, usermail)
         with open("users.txt", "w") as f:
             f.writelines(':'.join(mail_info_str))
             y = input("是否继续添加,是请输入y")
@@ -132,7 +132,7 @@ def set_user():
                 username = input("username:")
                 password = input("password:")
                 usermail = input("mail:")
-                f.writelines(':'.join(mail_info_str))
+                f.writelines("\n"+':'.join(mail_info_str))
                 y = input("是否继续添加,是请输入y")
         users_info.append((username, password, usermail))
     return users_info
